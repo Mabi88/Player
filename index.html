@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Мой плеер</title>
+<title>SoundCheck</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Плеер">
+<meta name="apple-mobile-web-app-title" content="SoundCheck">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700&display=swap">
 <style>
-:root{--bg:#eef0f4;--card:#fff;--ink:#1b2233;--mute:#667088;--line:#d9deea;--acc:#2f5bff;--onacc:#fff;--err:#d6342f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--card:#1c212c;--ink:#e8ebf3;--mute:#8b94aa;--line:#2c3342;--acc:#7b97ff;--onacc:#101420;--err:#ff7b76;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#12151c;--card:#1c212c;--ink:#e8ebf3;--mute:#8b94aa;--line:#2c3342;--acc:#7b97ff;--onacc:#101420;--err:#ff7b76;color-scheme:dark}
+:root{--bg:#000;--card:#121212;--ink:#f2f2f2;--mute:#9a9a9a;--line:#2b2b2b;--acc:#d4af37;--onacc:#000;--err:#ff6b63;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:720px;margin:0 auto;padding:20px 16px 40px}
-h1{font-size:28px;line-height:1.15;margin:0 0 16px;font-weight:700;letter-spacing:-.01em}
+h1{font-size:30px;line-height:1.15;margin:0 0 16px;font-weight:700;letter-spacing:.01em;color:var(--acc)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px}
 input[type=search]{width:100%;min-height:44px;padding:0 12px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px}
 input:focus-visible,button:focus-visible,label:focus-within{outline:2px solid var(--acc);outline-offset:2px}
@@ -51,7 +51,7 @@ li.on{border-left-color:var(--acc);background:var(--bg)}
 </head>
 <body>
 <main>
-  <h1>Мой плеер</h1>
+  <h1>SoundCheck</h1>
 
   <div class="add">
     <label class="btn pri" for="file">Добавить файлы mp3 или mp4</label>
@@ -70,7 +70,7 @@ li.on{border-left-color:var(--acc);background:var(--bg)}
   </section>
 
   <input type="search" id="q" placeholder="Поиск по названию" aria-label="Поиск по названию">
-  <div class="list-h"><h2 id="count">Библиотека</h2></div>
+  <div class="list-h"><h2 id="count">Треки</h2></div>
   <div class="card"><ul id="list"></ul></div>
 
   <p class="note">Файлы хранятся в браузере этого телефона. Аудио играет при выключенном экране, видео нет. Если очистить данные сайта, файлы удалятся. Чтобы открывать плеер как приложение: «Поделиться» → «На экран Домой».</p>
@@ -214,7 +214,7 @@ li.on{border-left-color:var(--acc);background:var(--bg)}
   function render(){
     var q=query.trim().toLowerCase();
     var shown=tracks.filter(function(t){return !q||t.name.toLowerCase().indexOf(q)>-1});
-    $('count').textContent=tracks.length?('Библиотека: '+tracks.length):'Библиотека';
+    $('count').textContent=tracks.length?('Треки: '+tracks.length):'Треки';
     try{ localStorage.setItem('player.count',tracks.length); }catch(e){}
     if(!shown.length){
       $('list').innerHTML='<li style="border-left-color:transparent"><div class="empty">'+(tracks.length?'Ничего не найдено.':'Здесь появятся ваши файлы.')+'</div></li>';
