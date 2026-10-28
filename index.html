@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мой плеер</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Плеер">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#eef0f4;--card:#fff;--ink:#1b2233;--mute:#667088;--line:#d9deea;--acc:#2f5bff;--onacc:#fff;--err:#d6342f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--card:#1c212c;--ink:#e8ebf3;--mute:#8b94aa;--line:#2c3342;--acc:#7b97ff;--onacc:#101420;--err:#ff7b76;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12151c;--card:#1c212c;--ink:#e8ebf3;--mute:#8b94aa;--line:#2c3342;--acc:#7b97ff;--onacc:#101420;--err:#ff7b76;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:28px;line-height:1.15;margin:0 0 16px;font-weight:700;letter-spacing:-.01em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+input[type=search]{width:100%;min-height:44px;padding:0 12px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px}
+input:focus-visible,button:focus-visible,label:focus-within{outline:2px solid var(--acc);outline-offset:2px}
+button,.btn{min-height:44px;padding:0 16px;font:500 15px/1 "Golos Text",system-ui,sans-serif;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.pri{background:var(--acc);color:var(--onacc);border-color:var(--acc);font-weight:700}
+#file{position:absolute;width:1px;height:1px;opacity:0}
+.add{display:flex;gap:10px;margin-bottom:16px}
+.add .btn{flex:1;min-height:52px;font-size:16px}
+.player{margin-bottom:16px;overflow:hidden}
+.player video{width:100%;max-height:60vh;background:#000;display:block}
+.player audio{width:100%;display:block;margin:0}
+.now{padding:12px 14px}
+.now b{display:block;overflow-wrap:anywhere}
+.ctl{display:flex;gap:8px;margin-top:10px}
+.ctl button{flex:1}
+.empty{padding:24px 16px;color:var(--mute)}
+.msg{font-size:14px;color:var(--mute);margin:8px 2px;min-height:20px}
+.msg.err{color:var(--err)}
+.list-h{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px}
+.list-h h2{font-size:18px;margin:0}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;border-bottom:1px solid var(--line);border-left:6px solid var(--line)}
+li:last-child{border-bottom:0}
+li.on{border-left-color:var(--acc);background:var(--bg)}
+.pick{flex:1;min-width:0;border:0;background:none;border-radius:0;justify-content:flex-start;text-align:left;display:block;padding:8px 12px;min-height:56px}
+.pick span{display:block;overflow-wrap:anywhere;font-weight:500}
+.pick small{color:var(--mute);font-size:13px}
+.del{border:0;background:none;color:var(--mute);padding:0 12px;font-size:14px}
+.del.arm{color:var(--err);font-weight:700}
+.note{font-size:13px;color:var(--mute);margin-top:16px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Мой плеер</h1>
+
+  <div class="add">
+    <label class="btn pri" for="file">Добавить файлы mp3 или mp4</label>
+    <input id="file" type="file" accept="audio/*,video/*,.mp3,.m4a,.mp4,.mov" multiple>
+  </div>
+  <p class="msg" id="msg" role="status"></p>
+
+  <section class="card player" id="player">
+    <video id="v" controls playsinline preload="metadata" hidden></video>
+    <audio id="a" controls preload="metadata" hidden></audio>
+    <div class="empty" id="ph">Добавьте файлы, затем выберите трек в списке.</div>
+    <div class="now" id="now" hidden>
+      <b id="nowTitle"></b>
+      <div class="ctl"><button id="prev">Назад</button><button id="next">Далее</button></div>
+    </div>
+  </section>
+
+  <input type="search" id="q" placeholder="Поиск по названию" aria-label="Поиск по названию">
+  <div class="list-h"><h2 id="count">Библиотека</h2></div>
+  <div class="card"><ul id="list"></ul></div>
+
+  <p class="note">Файлы хранятся в браузере этого телефона. Аудио играет при выключенном экране, видео нет. Если очистить данные сайта, файлы удалятся. Чтобы открывать плеер как приложение: «Поделиться» → «На экран Домой».</p>
+</main>
+
+<script>
+(function(){
+  var db, tracks=[], curId=null, objUrl=null, query='', armed=null, armT=null;
+  var $=function(id){return document.getElementById(id)};
+  var V=$('v'), A=$('a');
+
+  function say(t,err){ var m=$('msg'); m.textContent=t; m.className='msg'+(err?' err':''); }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
+  function mb(b){ return (b/1048576).toFixed(1).replace('.',',')+' МБ'; }
+  function req(r){ return new Promise(function(res,rej){ r.onsuccess=function(){res(r.result)}; r.onerror=function(){rej(r.error)}; }); }
+
+  function openDb(){
+    return new Promise(function(res,rej){
+      var r=indexedDB.open('player-files',1);
+      r.onupgradeneeded=function(){ r.result.createObjectStore('meta',{keyPath:'id',autoIncrement:true}); r.result.createObjectStore('blobs'); };
+      r.onsuccess=function(){res(r.result)};
+      r.onerror=function(){rej(r.error)};
+    });
+  }
+
+  function guess(f){
+    if(f.type) return f.type;
+    if(/\.mp3$/i.test(f.name)) return 'audio/mpeg';
+    if(/\.m4a$/i.test(f.name)) return 'audio/mp4';
+    return 'video/mp4';
+  }
+
+  function put(f){
+    return new Promise(function(res,rej){
+      var type=guess(f), t=db.transaction(['meta','blobs'],'readwrite');
+      var m={name:f.name.replace(/\.[^.]+$/,''), kind:type.indexOf('video')===0?'video':'audio', size:f.size, added:Date.now()};
+      var r=t.objectStore('meta').add(m);
+      r.onsuccess=function(){ m.id=r.result; t.objectStore('blobs').put(new Blob([f],{type:type}),r.result); };
+      t.oncomplete=function(){res(m)};
+      t.onabort=t.onerror=function(){rej(t.error)};
+    });
+  }
+
+  async function load(){
+    tracks=await req(db.transaction('meta').objectStore('meta').getAll());
+    tracks.sort(function(a,b){return a.added-b.added||a.id-b.id});
+  }
+
+  async function addFiles(files){
+    var ok=0, fail=0;
+    for(var i=0;i<files.length;i++){
+      var f=files[i];
+      if(!/^(audio|video)\//.test(f.type)&&!/\.(mp3|m4a|mp4|mov)$/i.test(f.name)){ fail++; continue; }
+      try{ await put(f); ok++; }catch(e){ fail++; }
+    }
+    await load(); render();
+    say(ok?('Добавлено файлов: '+ok+(fail?'. Не удалось: '+fail+'.':'.')):'Не удалось добавить файлы.',!ok);
+    if(ok&&curId===null&&tracks.length) play(tracks[0].id);
+  }
+
+  function stopAll(){
+    A.pause(); V.pause();
+    A.removeAttribute('src'); V.removeAttribute('src'); A.load(); V.load();
+    if(objUrl){ URL.revokeObjectURL(objUrl); objUrl=null; }
+  }
+
+  var cache={id:null,url:null};
+  function dropCache(){ if(cache.url) URL.revokeObjectURL(cache.url); cache={id:null,url:null}; }
+
+  async function urlFor(id){
+    var blob;
+    try{ blob=await req(db.transaction('blobs').objectStore('blobs').get(id)); }catch(e){ blob=null; }
+    return blob?URL.createObjectURL(blob):null;
+  }
+
+  async function prefetch(){
+    var i=idx(); if(i<0||tracks.length<2) return;
+    var n=tracks[(i+1)%tracks.length];
+    if(n.kind!=='audio'||cache.id===n.id) return;
+    dropCache();
+    var u=await urlFor(n.id);
+    if(!u) return;
+    var j=idx();
+    if(j>=0&&tracks[(j+1)%tracks.length].id===n.id) cache={id:n.id,url:u}; else URL.revokeObjectURL(u);
+  }
+
+  function begin(m,url){
+    var el=m.kind==='video'?V:A, other=el===V?A:V, old=objUrl;
+    other.pause(); other.removeAttribute('src'); other.hidden=true;
+    curId=m.id; objUrl=url;
+    el.hidden=false; $('ph').hidden=true; $('now').hidden=false;
+    $('nowTitle').textContent=m.name;
+    el.src=url;
+    var p=el.play(); if(p&&p.catch) p.catch(function(){});
+    if(old&&old!==url) setTimeout(function(){ URL.revokeObjectURL(old); },3000);
+    try{
+      if('mediaSession' in navigator){
+        var ms=navigator.mediaSession;
+        ms.metadata=new MediaMetadata({title:m.name});
+        ms.setActionHandler('play',function(){ el.play(); });
+        ms.setActionHandler('pause',function(){ el.pause(); });
+        ms.setActionHandler('nexttrack',next);
+        ms.setActionHandler('previoustrack',prev);
+      }
+    }catch(e){}
+    say(''); render(); prefetch();
+  }
+
+  async function play(id){
+    var m=tracks.find(function(t){return t.id===id}); if(!m) return;
+    var u;
+    if(cache.id===id&&cache.url){ u=cache.url; cache={id:null,url:null}; }
+    else u=await urlFor(id);
+    if(!u){ say('Файл не найден в хранилище.',true); return; }
+    begin(m,u);
+  }
+
+  function onEnded(){
+    if(!tracks.length) return;
+    var n=tracks[(idx()+1)%tracks.length];
+    if(n&&cache.id===n.id&&cache.url){ var u=cache.url; cache={id:null,url:null}; begin(n,u); }
+    else next();
+  }
+
+  function idx(){ return tracks.findIndex(function(t){return t.id===curId}); }
+  function next(){ if(!tracks.length) return; play(tracks[(idx()+1)%tracks.length].id); }
+  function prev(){ if(!tracks.length) return; play(tracks[(idx()-1+tracks.length)%tracks.length].id); }
+
+  async function remove(id){
+    var t=db.transaction(['meta','blobs'],'readwrite');
+    t.objectStore('meta').delete(id); t.objectStore('blobs').delete(id);
+    await new Promise(function(res){ t.oncomplete=res; t.onabort=res; });
+    var wasCur=id===curId;
+    await load();
+    if(wasCur){
+      stopAll(); curId=null; V.hidden=true; A.hidden=true; $('now').hidden=true; $('ph').hidden=false;
+    }
+    render();
+  }
+
+  function render(){
+    var q=query.trim().toLowerCase();
+    var shown=tracks.filter(function(t){return !q||t.name.toLowerCase().indexOf(q)>-1});
+    $('count').textContent=tracks.length?('Библиотека: '+tracks.length):'Библиотека';
+    try{ localStorage.setItem('player.count',tracks.length); }catch(e){}
+    if(!shown.length){
+      $('list').innerHTML='<li style="border-left-color:transparent"><div class="empty">'+(tracks.length?'Ничего не найдено.':'Здесь появятся ваши файлы.')+'</div></li>';
+      return;
+    }
+    $('list').innerHTML=shown.map(function(t){
+      return '<li class="'+(t.id===curId?'on':'')+'"><button class="pick" data-p="'+t.id+'"><span>'+esc(t.name)+'</span><small>'+(t.kind==='video'?'Видео':'Аудио')+' · '+mb(t.size)+'</small></button><button class="del'+(armed===t.id?' arm':'')+'" data-d="'+t.id+'">'+(armed===t.id?'Удалить?':'Удалить')+'</button></li>';
+    }).join('');
+  }
+
+  $('list').addEventListener('click',function(e){
+    var p=e.target.closest('[data-p]'), d=e.target.closest('[data-d]');
+    if(p){ play(+p.dataset.p); return; }
+    if(d){
+      var id=+d.dataset.d;
+      if(armed===id){ armed=null; clearTimeout(armT); remove(id); }
+      else{ armed=id; render(); clearTimeout(armT); armT=setTimeout(function(){armed=null;render();},3000); }
+    }
+  });
+  $('file').addEventListener('change',function(e){ var fs=Array.prototype.slice.call(e.target.files); e.target.value=''; if(fs.length) addFiles(fs); });
+  $('q').addEventListener('input',function(e){ query=e.target.value; render(); });
+  $('prev').addEventListener('click',prev);
+  $('next').addEventListener('click',next);
+  [A,V].forEach(function(el){
+    el.addEventListener('ended',onEnded);
+    el.addEventListener('error',function(){ if(el.getAttribute('src')) say('Не удалось воспроизвести этот файл. Возможно, формат не поддерживается.',true); });
+  });
+
+  (async function init(){
+    try{
+      db=await openDb(); await load();
+      var had=0; try{ had=+localStorage.getItem('player.count')||0; }catch(e){}
+      render();
+      if(had>0&&!tracks.length) say('Браузер удалил сохранённые файлы. Добавьте их заново.',true);
+      try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+    }catch(e){
+      say('Хранилище браузера недоступно, файлы сохранить не получится.',true);
+    }
+  })();
+})();
+</script>
+</body>
+</html>
